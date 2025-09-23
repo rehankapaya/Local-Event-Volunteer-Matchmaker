@@ -5,10 +5,11 @@ import type { Filters } from '../types';
 interface FilterSidebarProps {
   filters: Filters;
   onFilterChange: <K extends keyof Filters>(key: K, value: Filters[K]) => void;
+  locationPermissionStatus: PermissionState | 'unknown';
 }
 
 
-const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFilterChange }) => {
+const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFilterChange, locationPermissionStatus }) => {
   
   const handleCategoryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const category = e.target.value as EventCategory;
@@ -17,6 +18,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFilterChange }
       : [...filters.categories, category];
     onFilterChange('categories', newCategories);
   };
+  
+  const isDistanceDisabled = locationPermissionStatus === 'denied';
     
   return (
     <aside className="w-full md:w-64 lg:w-72 bg-white p-6 rounded-lg shadow-md self-start">
@@ -89,15 +92,21 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFilterChange }
       {/* Filter by Location */}
       <div>
         <h4 className="font-semibold text-gray-700 mb-2">Distance</h4>
+        {isDistanceDisabled && (
+          <p className="text-xs text-danger mb-2">
+            Location access denied. Enable it in your browser settings to use this filter.
+          </p>
+        )}
         <div className="space-y-2">
             {[0, 5, 10, 25].map(dist => (
-                <label key={dist} className="flex items-center space-x-2 cursor-pointer">
+                <label key={dist} className={`flex items-center space-x-2 ${dist > 0 && isDistanceDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                   <input 
                     type="radio" 
                     name="distance"
                     value={dist}
                     checked={filters.distance === dist}
                     onChange={() => onFilterChange('distance', dist)}
+                    disabled={dist > 0 && isDistanceDisabled}
                     className="text-primary focus:ring-primary"
                   />
                   <span className="text-gray-600">{dist === 0 ? 'Any distance' : `Within ${dist} km`}</span>

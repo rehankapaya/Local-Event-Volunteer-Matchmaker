@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { storageService } from '../services/storageService';
 import { locationService, Coordinates } from '../services/locationService';
-import { Event, Filters, EventCategory } from '../types';
+import { Event, Filters } from '../types';
 import EventCard from '../components/EventCard';
 import FilterSidebar from '../components/FilterSidebar';
 import AIRecommender from '../components/AIRecommender';
-import { XCircleIcon } from '../components/icons/XCircleIcon';
 
 const HomePage: React.FC = () => {
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationPermissionStatus, setLocationPermissionStatus] = useState<PermissionState | 'unknown'>('unknown');
 
   const [filters, setFilters] = useState<Filters>({
     keyword: '',
@@ -25,26 +24,42 @@ const HomePage: React.FC = () => {
     // Fetch events
     setAllEvents(storageService.getEvents());
     setLoading(false);
+
+    // Check for location permission status on mount
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then(permissionStatus => {
+        setLocationPermissionStatus(permissionStatus.state);
+        // Listen for changes in permission status
+        permissionStatus.onchange = () => {
+          setLocationPermissionStatus(permissionStatus.state);
+        };
+      });
+    } else {
+      // Fallback for browsers that don't support the Permissions API
+      setLocationPermissionStatus('prompt');
+    }
   }, []);
 
-  // Effect to handle location fetching when a distance filter is selected
+  // Effect to handle location fetching and state updates based on permission
   useEffect(() => {
-    if (filters.distance > 0 && !userLocation) {
-      // Clear previous error when retrying
-      if (locationError) setLocationError(null);
-
+    // If a distance filter is selected, and we have permission, get location
+    if (filters.distance > 0 && !userLocation && locationPermissionStatus !== 'denied') {
       locationService.getUserLocation()
         .then(coords => {
           setUserLocation(coords);
         })
         .catch(error => {
           console.error(error);
-          setLocationError(error.message);
-          // Reset distance filter on failure to prevent inconsistent state
+          // If user denies the prompt, this will catch. Reset the filter.
           setFilters(prev => ({ ...prev, distance: 0 }));
         });
     }
-  }, [filters.distance, userLocation]);
+
+    // If permission is or becomes denied, ensure distance filter is reset as a safeguard.
+    if (locationPermissionStatus === 'denied' && filters.distance > 0) {
+      setFilters(prev => ({ ...prev, distance: 0 }));
+    }
+  }, [filters.distance, userLocation, locationPermissionStatus]);
 
   const handleFilterChange = <K extends keyof Filters>(key: K, value: Filters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -111,24 +126,9 @@ const HomePage: React.FC = () => {
         <FilterSidebar 
             filters={filters} 
             onFilterChange={handleFilterChange} 
+            locationPermissionStatus={locationPermissionStatus}
         />
         <main className="flex-1">
-          {locationError && (
-            <div className="bg-warning/10 border-l-4 border-warning text-yellow-800 p-4 mb-6 rounded-md relative shadow-md" role="alert">
-              <div className="flex">
-                <div className="py-1">
-                  <svg className="fill-current h-6 w-6 text-warning mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zM9 5v6h2V5H9zm0 8v2h2v-2H9z"/></svg>
-                </div>
-                <div>
-                  <p className="font-bold">Location Error</p>
-                  <p className="text-sm">{locationError}</p>
-                </div>
-              </div>
-              <button onClick={() => setLocationError(null)} className="absolute top-2 right-2 p-1" aria-label="Close alert">
-                <XCircleIcon className="h-5 w-5 hover:text-yellow-700"/>
-              </button>
-            </div>
-          )}
           <h2 className="text-3xl font-bold text-gray-800 mb-6">Upcoming Events</h2>
           {loading ? (
             <p>Loading events...</p>
