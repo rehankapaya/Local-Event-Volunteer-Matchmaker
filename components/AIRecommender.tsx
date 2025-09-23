@@ -1,23 +1,32 @@
 
 import React, { useState, useEffect } from 'react';
+// FIX: Import 'Link' from 'react-router-dom' to be used for navigation.
+import { Link } from 'react-router-dom';
 import { geminiService } from '../services/geminiService';
-import { mockUsers, mockEvents } from '../data/mockData';
-import { AIRecommendation } from '../types';
+import { storageService } from '../services/storageService';
+import { AIRecommendation, User, Event } from '../types';
 import EventCard from './EventCard';
 
 const AIRecommender: React.FC = () => {
   const [recommendations, setRecommendations] = useState<AIRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
+    const user = storageService.getCurrentUser();
+    setCurrentUser(user);
+    
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const fetchRecommendations = async () => {
       try {
         setLoading(true);
         setError(null);
-        // Using mock user and events for this demo
-        const user = mockUsers[0];
-        const events = mockEvents;
+        const events = storageService.getEvents();
         const result = await geminiService.getAIRecommendations(user, events);
         setRecommendations(result);
       } catch (err) {
@@ -27,13 +36,22 @@ const AIRecommender: React.FC = () => {
         setLoading(false);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
     fetchRecommendations();
   }, []);
 
+  if (!currentUser) {
+    return (
+       <div className="bg-light p-6 rounded-lg shadow-lg my-8 text-center">
+         <h2 className="text-2xl font-bold text-dark mb-2">✨ Recommended For You</h2>
+         <p className="text-gray-600">Please <Link to="/login" className="text-primary font-semibold hover:underline">log in</Link> to see personalized recommendations.</p>
+       </div>
+    )
+  }
+
   return (
     <div className="bg-light p-6 rounded-lg shadow-lg my-8">
-      <h2 className="text-2xl font-bold text-dark mb-4">✨ Recommended For You</h2>
+      <h2 className="text-2xl font-bold text-dark mb-4">✨ Recommended For You, {currentUser.name.split(' ')[0]}</h2>
       {loading && <p className="text-center text-gray-600">Generating personalized recommendations...</p>}
       {error && <p className="text-center text-danger">{error}</p>}
       {!loading && !error && (

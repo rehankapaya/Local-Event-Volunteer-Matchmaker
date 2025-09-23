@@ -1,4 +1,5 @@
-import { User, Event, UserRole, EventCategory, VolunteerStat } from '../types';
+
+import { User, Event, UserRole, EventCategory, VolunteerStat, Notification, NotificationType } from '../types';
 
 export const mockUsers: User[] = [
   {
@@ -11,6 +12,12 @@ export const mockUsers: User[] = [
     skills: ['Project Management', 'Gardening', 'Public Speaking'],
     location: 'Greenwood',
     avatarUrl: 'https://picsum.photos/seed/alex/200',
+    registeredEvents: [
+      { eventId: 'e1', role: 'volunteer' },
+      { eventId: 'e5', role: 'volunteer' },
+      { eventId: 'e8', role: 'volunteer' }
+    ],
+    pendingEvents: [],
   },
   {
     id: 'u2',
@@ -22,6 +29,8 @@ export const mockUsers: User[] = [
     skills: ['Event Planning', 'Marketing', 'Grant Writing'],
     location: 'Maple Creek',
     avatarUrl: 'https://picsum.photos/seed/maria/200',
+    registeredEvents: [],
+    pendingEvents: [],
   },
   {
     id: 'u3',
@@ -33,11 +42,23 @@ export const mockUsers: User[] = [
     skills: ['Web Development', 'Data Analysis', 'Animal Care'],
     location: 'Oakdale',
     avatarUrl: 'https://picsum.photos/seed/sam/200',
+    registeredEvents: [{ eventId: 'e3', role: 'attendee' }],
+    pendingEvents: [{ eventId: 'e2', role: 'volunteer'}], // Sam applied to volunteer for the art festival
+  },
+  {
+    id: 'u4',
+    name: 'Admin User',
+    email: 'admin@example.com',
+    role: UserRole.Admin,
+    bio: 'Platform administrator.',
+    interests: [],
+    skills: ['Platform Management', 'Data Analysis'],
+    location: 'Headquarters',
+    avatarUrl: 'https://picsum.photos/seed/admin/200',
+    registeredEvents: [],
+    pendingEvents: [],
   }
 ];
-
-// Simulate a logged-in user
-export const currentUser: User = mockUsers[1]; // Maria Garcia (Organizer)
 
 export const mockEvents: Event[] = [
   {
@@ -47,12 +68,17 @@ export const mockEvents: Event[] = [
     date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     time: '09:00 AM - 12:00 PM',
     location: 'Greenwood Park',
+    coordinates: { lat: 47.6900, lng: -122.3552 },
     category: EventCategory.Environment,
     requiredSkills: ['Teamwork', 'Gardening'],
     maxCapacity: 50,
-    registeredUsers: 23,
     organizer: 'Greenwood Community Association',
     imageUrl: 'https://picsum.photos/seed/greepark/600/400',
+    attendees: Array.from({ length: 22 }, (_, i) => `u_attendee_${i}`),
+    volunteers: ['u1'],
+    pendingVolunteers: [],
+    waitlist: [],
+    status: 'approved',
   },
   {
     id: 'e2',
@@ -61,12 +87,17 @@ export const mockEvents: Event[] = [
     date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     time: '11:00 AM - 06:00 PM',
     location: 'Maple Creek Town Square',
+    coordinates: { lat: 49.9167, lng: -109.4682 },
     category: EventCategory.Arts,
     requiredSkills: ['Customer Service', 'Event Setup'],
     maxCapacity: 100,
-    registeredUsers: 88,
     organizer: 'Maria Garcia',
     imageUrl: 'https://picsum.photos/seed/artfest/600/400',
+    attendees: Array.from({ length: 88 }, (_, i) => `u_attendee_art_${i}`),
+    volunteers: [],
+    pendingVolunteers: ['u3'], // Sam is pending approval here
+    waitlist: [],
+    status: 'approved',
   },
   {
     id: 'e3',
@@ -75,12 +106,17 @@ export const mockEvents: Event[] = [
     date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     time: '10:00 AM - 04:00 PM',
     location: 'Oakdale Public Library',
+    coordinates: { lat: 44.9625, lng: -92.9677 },
     category: EventCategory.Education,
     requiredSkills: ['Programming', 'Teaching', 'Patience'],
     maxCapacity: 30,
-    registeredUsers: 15,
     organizer: 'Tech for Tomorrow',
     imageUrl: 'https://picsum.photos/seed/codecamp/600/400',
+    attendees: ['u3'],
+    volunteers: Array.from({ length: 14 }, (_, i) => `u_volunteer_code_${i}`),
+    pendingVolunteers: [],
+    waitlist: [],
+    status: 'approved',
   },
   {
     id: 'e4',
@@ -89,27 +125,126 @@ export const mockEvents: Event[] = [
     date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     time: '12:00 PM - 05:00 PM',
     location: 'Oakdale Animal Shelter',
+    coordinates: { lat: 44.9640, lng: -92.9700 },
     category: EventCategory.Animals,
     requiredSkills: ['Animal Handling', 'Communication'],
     maxCapacity: 40,
-    registeredUsers: 35,
     organizer: 'Oakdale Animal Rescue',
     imageUrl: 'https://picsum.photos/seed/shelter/600/400',
+    attendees: Array.from({ length: 10 }, (_, i) => `u_attendee_animal_${i}`),
+    volunteers: Array.from({ length: 25 }, (_, i) => `u_volunteer_animal_${i}`),
+    pendingVolunteers: [],
+    waitlist: [],
+    status: 'approved',
   },
   {
     id: 'e5',
     title: 'Community Health Fair',
     description: 'Providing free health screenings and wellness information to the community. Volunteers needed for registration, directing traffic, and distributing flyers.',
-    date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Past event
     time: '08:00 AM - 02:00 PM',
     location: 'Greenwood Community Center',
+    coordinates: { lat: 47.6888, lng: -122.3591 },
     category: EventCategory.Health,
     requiredSkills: ['Organization', 'Communication'],
     maxCapacity: 60,
-    registeredUsers: 20,
     organizer: 'Greenwood Health Initiative',
     imageUrl: 'https://picsum.photos/seed/healthfair/600/400',
+    attendees: [],
+    volunteers: ['u1'], // Alex volunteered here
+    pendingVolunteers: [],
+    waitlist: [],
+    status: 'approved',
   },
+  {
+    id: 'e6',
+    title: 'New Charity Run - PENDING',
+    description: 'A 5k run to raise money for local schools. This event is pending approval from the platform admin.',
+    date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    time: '08:00 AM - 11:00 AM',
+    location: 'City Center',
+    coordinates: { lat: 47.6062, lng: -122.3321 },
+    category: EventCategory.Community,
+    requiredSkills: ['Running', 'Fundraising'],
+    maxCapacity: 200,
+    organizer: 'Maria Garcia',
+    imageUrl: 'https://picsum.photos/seed/charityrun/600/400',
+    attendees: [],
+    volunteers: [],
+    pendingVolunteers: [],
+    waitlist: [],
+    status: 'pending',
+  },
+  {
+    id: 'e7',
+    title: 'Online Mentorship Session',
+    description: 'Provide a 1-hour online mentorship session to a student interested in your professional field. A quick and impactful way to share your knowledge.',
+    date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    time: '05:00 PM - 06:00 PM',
+    location: 'Online / Remote',
+    coordinates: { lat: 47.6062, lng: -122.3321 },
+    category: EventCategory.Education,
+    requiredSkills: ['Mentorship', 'Communication'],
+    maxCapacity: 10,
+    organizer: 'Tech for Tomorrow',
+    imageUrl: 'https://picsum.photos/seed/mentor/600/400',
+    attendees: [],
+    volunteers: [],
+    pendingVolunteers: [],
+    waitlist: [],
+    status: 'approved',
+    isMicro: true,
+  },
+  {
+    id: 'e8',
+    title: 'Community Garden Watering',
+    description: 'Spend an hour watering the community garden plots. All equipment provided. Just show up and help our local garden thrive!',
+    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Past event
+    time: '08:00 AM - 09:00 AM',
+    location: 'Greenwood Community Garden',
+    coordinates: { lat: 47.6895, lng: -122.3550 },
+    category: EventCategory.Environment,
+    requiredSkills: ['Gardening'],
+    maxCapacity: 5,
+    organizer: 'Greenwood Community Association',
+    imageUrl: 'https://picsum.photos/seed/gardenwater/600/400',
+    attendees: [],
+    volunteers: ['u1'],
+    pendingVolunteers: [],
+    waitlist: [],
+    status: 'approved',
+    isMicro: true,
+  },
+];
+
+export const mockNotifications: Notification[] = [
+    {
+        id: 'n1',
+        userId: 'u1',
+        message: 'Reminder: The "Greenwood Park Cleanup" is tomorrow at 09:00 AM. We look forward to seeing you!',
+        type: NotificationType.REMINDER,
+        eventId: 'e1',
+        read: false,
+        timestamp: new Date().toISOString(),
+    },
+    {
+        id: 'n2',
+        userId: 'u1',
+        message: 'Thank you for your incredible help at the "Community Health Fair". You made a real difference!',
+        type: NotificationType.THANK_YOU,
+        eventId: 'e5',
+        read: false,
+        timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'n3',
+        userId: 'u1',
+        message: 'A new event, "Art in the Open Festival", matches your interests. Check it out!',
+        type: NotificationType.REMINDER,
+        eventId: 'e2',
+        read: true,
+        timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    }
 ];
 
 export const mockVolunteerStats: VolunteerStat = {

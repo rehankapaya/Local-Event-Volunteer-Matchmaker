@@ -1,7 +1,13 @@
+
 import React, { useState } from 'react';
-import { EventCategory } from '../types';
+import { useNavigate } from 'react-router-dom';
+import { Event, EventCategory } from '../types';
+import { storageService } from '../services/storageService';
 
 const CreateEventPage: React.FC = () => {
+  const navigate = useNavigate();
+  const currentUser = storageService.getCurrentUser();
+
   const [eventData, setEventData] = useState({
     title: '',
     description: '',
@@ -12,11 +18,17 @@ const CreateEventPage: React.FC = () => {
     maxCapacity: '',
     requiredSkills: '',
     image: null as File | null,
+    isMicro: false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { id, value } = e.target;
-    setEventData(prev => ({ ...prev, [id]: value }));
+    if (e.target.type === 'checkbox') {
+        const { checked } = e.target as HTMLInputElement;
+        setEventData(prev => ({ ...prev, [id]: checked }));
+    } else {
+        setEventData(prev => ({ ...prev, [id]: value }));
+    }
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,13 +39,36 @@ const CreateEventPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would send this data to a server
-    console.log("Creating new event:", {
-        ...eventData,
-        requiredSkills: eventData.requiredSkills.split(',').map(s => s.trim()),
-        maxCapacity: parseInt(eventData.maxCapacity, 10),
-    });
-    alert('Event created successfully! (Check console for data)');
+    if (!currentUser) {
+        alert("You must be logged in to create an event.");
+        navigate('/login');
+        return;
+    }
+
+    const newEvent: Event = {
+        id: `e${Date.now()}`,
+        title: eventData.title,
+        description: eventData.description,
+        date: eventData.date,
+        time: eventData.time,
+        location: eventData.location,
+        category: eventData.category,
+        requiredSkills: eventData.requiredSkills.split(',').map(s => s.trim()).filter(s => s),
+        maxCapacity: parseInt(eventData.maxCapacity, 10) || 0,
+        organizer: currentUser.name,
+        imageUrl: `https://picsum.photos/seed/${eventData.title.replace(/\s/g, '')}/600/400`,
+        coordinates: { lat: 47.6062, lng: -122.3321 }, // Default to Seattle, WA for simplicity
+        attendees: [],
+        volunteers: [],
+        pendingVolunteers: [],
+        waitlist: [],
+        status: 'pending',
+        isMicro: eventData.isMicro,
+    };
+
+    storageService.addEvent(newEvent);
+    alert('Event created successfully! It is now pending admin approval.');
+    navigate('/dashboard');
   };
 
   return (
@@ -84,6 +119,11 @@ const CreateEventPage: React.FC = () => {
             <label htmlFor="requiredSkills" className="block text-sm font-medium text-gray-700">Required Skills (comma separated)</label>
             <input type="text" id="requiredSkills" value={eventData.requiredSkills} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary" />
           </div>
+          
+          <div className="flex items-center">
+            <input type="checkbox" id="isMicro" checked={eventData.isMicro} onChange={handleChange} className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" />
+            <label htmlFor="isMicro" className="ml-2 block text-sm font-medium text-gray-700">Micro-Volunteering (short, flexible task)</label>
+          </div>
 
           <div>
              <label htmlFor="image" className="block text-sm font-medium text-gray-700">Event Poster/Image</label>
@@ -92,7 +132,7 @@ const CreateEventPage: React.FC = () => {
 
           <div className="text-right">
             <button type="submit" className="bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-opacity-90 transition-all duration-200 shadow-md">
-              Publish Event
+              Submit for Review
             </button>
           </div>
         </form>

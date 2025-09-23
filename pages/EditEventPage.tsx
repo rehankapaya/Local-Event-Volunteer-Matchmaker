@@ -1,28 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Event, EventCategory } from '../types';
-import { mockEvents } from '../data/mockData';
+import { storageService } from '../services/storageService';
 
 const EditEventPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  // FIX: The state for form data was incorrectly typed as Partial<Event>.
-  // Form inputs provide string values, so the state type is adjusted to reflect this
-  // for fields like `requiredSkills` and `maxCapacity`, resolving type errors.
-  const [eventData, setEventData] = useState<Partial<Omit<Event, 'requiredSkills' | 'maxCapacity'> & {
-    requiredSkills: string;
-    maxCapacity: string | number;
-  }>>({});
+
+  // FIX: Correct the state type. The original type created an impossible intersection `string[] & string` for `requiredSkills`.
+  // Using `Omit` correctly types the form state where `requiredSkills` is a string, while other properties come from the `Event` type.
+  const [eventData, setEventData] = useState<Partial<Omit<Event, 'requiredSkills'> & { requiredSkills: string }>>({});
 
   useEffect(() => {
-    const eventToEdit = mockEvents.find(e => e.id === id);
+    const eventToEdit = storageService.getEvents().find(e => e.id === id);
     if (eventToEdit) {
       setEventData({
         ...eventToEdit,
         requiredSkills: (eventToEdit.requiredSkills || []).join(', '),
       });
     } else {
-      // Handle case where event is not found
+      alert("Event not found.");
       navigate('/dashboard');
     }
   }, [id, navigate]);
@@ -34,21 +31,22 @@ const EditEventPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Updating event:", {
+    const updatedEvent: Event = {
         ...eventData,
-        // FIX: The type of eventData.requiredSkills is now correctly inferred as string | undefined,
-        // so the 'split' method is available after the type guard.
+        id: id!,
         requiredSkills: typeof eventData.requiredSkills === 'string' ? eventData.requiredSkills.split(',').map(s => s.trim()) : [],
         maxCapacity: Number(eventData.maxCapacity),
-    });
-    alert('Event updated successfully! (Check console for data)');
+    } as Event;
+
+    storageService.updateEvent(updatedEvent);
+    alert('Event updated successfully!');
     navigate('/dashboard');
   };
   
-   const handleCancel = () => {
+   const handleCancelEvent = () => {
     if (window.confirm("Are you sure you want to cancel this event? This action cannot be undone.")) {
-      console.log(`Event ${id} has been cancelled.`);
-      alert(`Event ${id} cancelled successfully.`);
+      storageService.deleteEvent(id!);
+      alert(`Event cancelled successfully.`);
       navigate('/dashboard');
     }
   };
@@ -109,7 +107,7 @@ const EditEventPage: React.FC = () => {
           <div className="flex justify-between items-center">
              <button
               type="button"
-              onClick={handleCancel}
+              onClick={handleCancelEvent}
               className="bg-danger text-white font-bold py-3 px-6 rounded-lg hover:bg-opacity-90 transition-all duration-200 shadow-md"
             >
               Cancel Event

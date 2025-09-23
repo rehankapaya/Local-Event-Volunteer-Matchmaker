@@ -1,5 +1,7 @@
 {
   "name": "Local Event & Volunteer Matchmaker",
   "description": "A web platform to connect community members with local events and volunteering opportunities. It enables individuals to discover, filter, and register for activities based on their personal interests, skills, and location.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter as Router, Route, Routes } from 'react-router-dom';
 import Header from './components/Header';
@@ -10,6 +11,7 @@ import CreateEventPage from './pages/CreateEventPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import EditEventPage from './pages/EditEventPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 const App: React.FC = () => {
   return (
@@ -24,6 +26,7 @@ const App: React.FC = () => {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/create" element={<CreateEventPage />} />
             <Route path="/edit/:id" element={<EditEventPage />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
           </Routes>

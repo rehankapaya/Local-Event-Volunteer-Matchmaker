@@ -5,6 +5,7 @@ import { Event, EventCategory } from '../types';
 import { MapPinIcon } from './icons/MapPinIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { UsersIcon } from './icons/UsersIcon';
+import { ZapIcon } from './icons/ZapIcon';
 
 interface EventCardProps {
   event: Event;
@@ -20,7 +21,8 @@ const categoryColors: Record<EventCategory, string> = {
 };
 
 const EventCard: React.FC<EventCardProps> = ({ event }) => {
-  const capacityPercentage = (event.registeredUsers / event.maxCapacity) * 100;
+  const registeredCount = event.attendees.length + event.volunteers.length;
+  const capacityPercentage = (registeredCount / event.maxCapacity) * 100;
 
   return (
     <Link to={`/event/${event.id}`} className="block group">
@@ -30,6 +32,12 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
           <div className={`absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded-full ${categoryColors[event.category]}`}>
             {event.category}
           </div>
+          {event.isMicro && (
+            <div className="absolute top-2 right-2 flex items-center bg-yellow-300 text-yellow-800 px-2 py-1 text-xs font-bold rounded-full">
+              <ZapIcon className="w-4 h-4 mr-1"/>
+              <span>Micro</span>
+            </div>
+          )}
         </div>
         <div className="p-4">
           <h3 className="text-lg font-bold text-gray-800 group-hover:text-primary transition-colors duration-200">{event.title}</h3>
@@ -50,7 +58,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
             <div className="flex items-center justify-between text-sm text-gray-600">
                 <div className="flex items-center">
                     <UsersIcon className="w-4 h-4 mr-1 text-secondary"/>
-                    <span>{event.registeredUsers} / {event.maxCapacity}</span>
+                    <span>{registeredCount} / {event.maxCapacity}</span>
                 </div>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
